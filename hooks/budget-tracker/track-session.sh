@@ -70,7 +70,7 @@ b = load_budget('${BUDGET_FILE}')
 print(get_remaining(b))
 " 2>/dev/null || echo "unknown")
 
-  echo "{\"additionalContext\":\"📊 Budget: ${REMAINING} requests remaining this month. Ask clarifying questions. Iterate freely within each request.\"}"
+  echo "{\"additionalContext\":\"📊 Budget: ${REMAINING} requests remaining this month.\"}"
 
   # Log session start
   printf '{"timestamp":"%s","event":"sessionStart","remaining":%s}\n' \

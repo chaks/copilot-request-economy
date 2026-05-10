@@ -56,6 +56,7 @@ Continue refining within this same request window until the user explicitly says
 
 ## Red Flags — You Are Wasting Requests
 
+- **The request creates something new but you didn't invoke brainstorming** — STOP and call it now.
 - **You are about to end the response with a summary** — Add a question asking if adjustments are needed.
 - **You are about to end the response with "done" or "complete"** — Replace with a question asking for user feedback.
 - **Output is wrong and you are about to end the turn** — Ask the user what to adjust instead.
@@ -71,6 +72,8 @@ When both apply, follow the skill's detailed steps within the constraints of thi
 ### Skill Invocation by Phase
 
 Before executing any phase step, invoke the matching superpowers skill if there is even a 1% chance it applies.
+
+**Invoke `brainstorming` when the user request involves: creating new files or modules, adding features, designing APIs, choosing between approaches, or modifying existing behavior. Do NOT skip based on perceived simplicity.**
 
 | Phase           | Primary Skill                     | Supporting Skills                                            |
 | --------------- | --------------------------------- | ------------------------------------------------------------ |
@@ -93,7 +96,7 @@ Before executing any phase step, invoke the matching superpowers skill if there 
 ```
 User request
   → CLARIFY phase (this instruction)
-    → Invoke brainstorming skill (if creative/new work)
+    → Invoke brainstorming skill (new modules, features, APIs, design choices, behavior changes)
     → Ask questions, get approval
   → EXECUTE phase (this instruction)
     → Invoke executing-plans skill
