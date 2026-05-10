@@ -74,3 +74,8 @@ class TestTokenParser(unittest.TestCase):
             f.write('new')
         result = find_latest_process_log(self.tmpdir)
         self.assertEqual(result, new_path)
+
+    def test_parse_tokens_nonexistent_file(self):
+        result = parse_tokens_from_log('/nonexistent/path/file.log')
+        self.assertEqual(result['input_tokens'], 0)
+        self.assertEqual(result['output_tokens'], 0)
