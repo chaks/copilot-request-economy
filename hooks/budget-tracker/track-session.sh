@@ -176,30 +176,48 @@ if current_group:
 
 budget = load_budget('${BUDGET_FILE}')
 
+# Parse tokens once for the entire session, then distribute proportionally
+# across groups based on conversational turns
+input_tokens_total = ${INPUT_TOKENS:-0}
+output_tokens_total = ${OUTPUT_TOKENS:-0}
+
+# First pass: calculate total conversational turns for proportional distribution
+total_session_turns = 0
+group_data = []
 for group in groups:
-    # Calculate per-request conversational_turns as delta between flush points
     prev_flush = 0
-    total_turns = 0
-    total_tools = 0
-    total_files = 0
+    turns = 0
+    tools = 0
+    files = 0
     task_type = group[0].get('task_type', 'unknown')
     for entry in group:
         at = entry.get('flushed_at_session_turn', 0)
-        total_turns += max(1, at - prev_flush)
+        turns += max(1, at - prev_flush)
         prev_flush = at
-        total_tools += entry.get('tool_count', 0)
-        total_files += entry.get('files_affected', 0)
+        tools += entry.get('tool_count', 0)
+        files += entry.get('files_affected', 0)
+    total_session_turns += turns
+    group_data.append((task_type, tools, files, turns))
+
+# Second pass: log each group with proportionally distributed tokens
+for task_type, tools, files, turns in group_data:
+    if total_session_turns > 0:
+        group_input = int(input_tokens_total * turns / total_session_turns)
+        group_output = int(output_tokens_total * turns / total_session_turns)
+    else:
+        group_input = 0
+        group_output = 0
 
     log_request(
         budget, '${BUDGET_FILE}',
         tier='premium',
         task_type=task_type,
-        iterations=total_tools,
-        files_affected=total_files,
-        conversational_turns=total_turns,
+        iterations=tools,
+        files_affected=files,
+        conversational_turns=turns,
         outcome='success',
-        input_tokens=${INPUT_TOKENS:-0},
-        output_tokens=${OUTPUT_TOKENS:-0},
+        input_tokens=group_input,
+        output_tokens=group_output,
     )
 
 os.remove(session_file)
