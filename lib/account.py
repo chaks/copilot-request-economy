@@ -17,6 +17,8 @@ class BudgetAccount:
     limit: int
     requests: list[dict[str, Any]] = field(default_factory=list)
     last_session: str | None = None
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
 
 
 def _current_month() -> str:
@@ -52,6 +54,8 @@ def load_budget(path: str, current_month: str | None = None) -> BudgetAccount:
                     limit=data["limit"],
                     requests=data.get("requests", []),
                     last_session=data.get("lastSession"),
+                    total_input_tokens=data.get("totalInputTokens", 0),
+                    total_output_tokens=data.get("totalOutputTokens", 0),
                 )
             finally:
                 fcntl.flock(lockf.fileno(), fcntl.LOCK_UN)
@@ -73,6 +77,10 @@ def save_budget(account: BudgetAccount, path: str) -> None:
         "limit": account.limit,
         "requests": account.requests,
     }
+    if account.total_input_tokens:
+        data["totalInputTokens"] = account.total_input_tokens
+    if account.total_output_tokens:
+        data["totalOutputTokens"] = account.total_output_tokens
     if account.last_session:
         data["lastSession"] = account.last_session
 
@@ -113,6 +121,8 @@ def log_request(
     iterations: int = 0,  # Tool calls (kept for logging)
     conversational_turns: int = 1,  # Actual conversational turns
     outcome: str = "success",
+    input_tokens: int = 0,
+    output_tokens: int = 0,
 ) -> None:
     """Log a request to the budget atomically with exclusive locking.
 
@@ -170,10 +180,14 @@ def log_request(
                     "requestsSaved": saved,
                     "savingsPercent": savings_pct,
                 }
+                entry["inputTokens"] = input_tokens
+                entry["outputTokens"] = output_tokens
                 entry["requestsSaved"] = saved
                 entry["savingsPercent"] = savings_pct
 
             account.requests.append(entry)
+            account.total_input_tokens += input_tokens
+            account.total_output_tokens += output_tokens
 
             # Persist atomically while still holding lock
             data = {
@@ -182,6 +196,10 @@ def log_request(
                 "limit": account.limit,
                 "requests": account.requests,
             }
+            if account.total_input_tokens:
+                data["totalInputTokens"] = account.total_input_tokens
+            if account.total_output_tokens:
+                data["totalOutputTokens"] = account.total_output_tokens
             if account.last_session:
                 data["lastSession"] = account.last_session
 

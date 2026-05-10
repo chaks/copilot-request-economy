@@ -81,6 +81,21 @@ class TestLoadSaveBudget(unittest.TestCase):
         self.assertEqual(account.month, "2026-05")
         self.assertEqual(account.used, 0)
 
+    def test_budget_load_preserves_token_totals(self):
+        account = BudgetAccount(
+            month="2026-05",
+            used=1,
+            limit=300,
+            requests=[{"inputTokens": 5000, "outputTokens": 2000}],
+            total_input_tokens=5000,
+            total_output_tokens=2000,
+        )
+        save_budget(account, self.budget_path)
+
+        loaded = load_budget(self.budget_path)
+        self.assertEqual(loaded.total_input_tokens, 5000)
+        self.assertEqual(loaded.total_output_tokens, 2000)
+
 
 class TestLogRequest(unittest.TestCase):
     """Test request logging and efficiency tracking."""
@@ -131,6 +146,24 @@ class TestLogRequest(unittest.TestCase):
         self.assertEqual(eff["actualRequestsUsed"], 1)
         self.assertEqual(eff["requestsSaved"], 4)
         self.assertEqual(eff["savingsPercent"], 80)
+
+    def test_log_request_with_tokens(self):
+        account = BudgetAccount(month="2026-05", used=0, limit=300, requests=[])
+        log_request(
+            account,
+            self.budget_path,
+            tier="premium",
+            task_type="generation",
+            iterations=1,
+            conversational_turns=2,
+            outcome="success",
+            input_tokens=1000,
+            output_tokens=500,
+        )
+        self.assertEqual(account.total_input_tokens, 1000)
+        self.assertEqual(account.total_output_tokens, 500)
+        self.assertEqual(account.requests[0]["inputTokens"], 1000)
+        self.assertEqual(account.requests[0]["outputTokens"], 500)
 
     def test_non_premium_tier_does_not_increment(self):
         account = self._log_and_reload(
