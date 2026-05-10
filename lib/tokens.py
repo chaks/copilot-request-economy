@@ -22,7 +22,7 @@ def parse_tokens_from_log(log_path: str) -> dict:
         {"input_tokens": int, "output_tokens": int}
     """
     try:
-        with open(log_path, 'r') as f:
+        with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
             content = f.read()
     except (IOError, OSError):
         return {"input_tokens": 0, "output_tokens": 0}
@@ -32,7 +32,7 @@ def parse_tokens_from_log(log_path: str) -> dict:
 
     # Find all JSON-like blocks that contain "chat.completion"
     # We use a two-step approach: first find chat.completion blocks, then extract tokens
-    chat_block_pattern = re.compile(r'"object"\s*:\s*"chat\.completion".*?(?="object"|$)', re.DOTALL)
+    chat_block_pattern = re.compile(r'"object"\s*:\s*"chat\.completion".*?(?="object"\s*:|$)', re.DOTALL)
 
     prompt_pattern = re.compile(r'"prompt_tokens"\s*:\s*(\d+)')
     completion_pattern = re.compile(r'"completion_tokens"\s*:\s*(\d+)')
