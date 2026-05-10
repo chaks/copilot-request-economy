@@ -37,12 +37,11 @@ cd copilot-request-economy
 
 ### The Magic Formula: **CLARIFY → EXECUTE → ITERATE**
 
-```mermaid
-graph LR
-    A[CLARIFY] -->|Ask questions<br>Confirm understanding| B[EXECUTE]
-    B -->|Implement once<br>Minimal changes| C[ITERATE]
-    C -->|Refine until approved<br>Stay in same request| D[✅ DONE]
-    C -->|User says "looks good"| D
+```
+CLARIFY → EXECUTE → ITERATE → ✅ DONE
+   ↓          ↓           ↖
+Ask      Implement     Refine until
+questions   once        approved
 ```
 
 This structured workflow ensures:
