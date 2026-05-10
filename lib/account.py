@@ -180,14 +180,14 @@ def log_request(
                     "requestsSaved": saved,
                     "savingsPercent": savings_pct,
                 }
-                entry["inputTokens"] = input_tokens
-                entry["outputTokens"] = output_tokens
                 entry["requestsSaved"] = saved
                 entry["savingsPercent"] = savings_pct
+                entry["inputTokens"] = input_tokens
+                entry["outputTokens"] = output_tokens
+                account.total_input_tokens += input_tokens
+                account.total_output_tokens += output_tokens
 
             account.requests.append(entry)
-            account.total_input_tokens += input_tokens
-            account.total_output_tokens += output_tokens
 
             # Persist atomically while still holding lock
             data = {
