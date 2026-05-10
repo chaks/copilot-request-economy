@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# pytest
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# Lock and temp files (budget file concurrency)
+*.lock
+*.tmp
+
+# IDE
+.vscode/
+.idea/

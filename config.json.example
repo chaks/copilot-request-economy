@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "quota": {
+    "monthlyLimit": 300,
+    "resetDate": 1,
+    "warningThreshold": 50
+  },
+  "verbosity": "brief"
+}
