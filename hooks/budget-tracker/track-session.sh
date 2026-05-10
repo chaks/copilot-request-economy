@@ -139,7 +139,7 @@ print(json.dumps(result))
   INPUT_TOKENS=$(printf '%s' "$TOKENS_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin)['input_tokens'])")
   OUTPUT_TOKENS=$(printf '%s' "$TOKENS_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin)['output_tokens'])")
 
-  python3 -c "
+  INPUT_TOKENS="$INPUT_TOKENS" OUTPUT_TOKENS="$OUTPUT_TOKENS" python3 -c "
 import sys, json, os
 sys.path.insert(0, '${LIB_DIR}')
 from account import load_budget, log_request
@@ -177,9 +177,10 @@ if current_group:
 budget = load_budget('${BUDGET_FILE}')
 
 # Parse tokens once for the entire session, then distribute proportionally
-# across groups based on conversational turns
-input_tokens_total = ${INPUT_TOKENS:-0}
-output_tokens_total = ${OUTPUT_TOKENS:-0}
+# across groups based on conversational turns. Tokens are passed via
+# environment variables to prevent shell injection into Python source.
+input_tokens_total = int(os.environ.get('INPUT_TOKENS', 0))
+output_tokens_total = int(os.environ.get('OUTPUT_TOKENS', 0))
 
 # First pass: calculate total conversational turns for proportional distribution
 total_session_turns = 0
@@ -200,10 +201,17 @@ for group in groups:
     group_data.append((task_type, tools, files, turns))
 
 # Second pass: log each group with proportionally distributed tokens
+# Track remainder to avoid losing tokens to integer truncation
+input_rem = 0.0
+output_rem = 0.0
 for task_type, tools, files, turns in group_data:
     if total_session_turns > 0:
-        group_input = int(input_tokens_total * turns / total_session_turns)
-        group_output = int(output_tokens_total * turns / total_session_turns)
+        exact_input = input_tokens_total * turns / total_session_turns + input_rem
+        exact_output = output_tokens_total * turns / total_session_turns + output_rem
+        group_input = int(exact_input)
+        group_output = int(exact_output)
+        input_rem = exact_input - group_input
+        output_rem = exact_output - group_output
     else:
         group_input = 0
         group_output = 0

@@ -144,6 +144,8 @@ def log_request(
                 if data.get("month") == current_month:
                     account.used = data["used"]
                     account.requests = data.get("requests", [])
+                    account.total_input_tokens = data.get("totalInputTokens", 0)
+                    account.total_output_tokens = data.get("totalOutputTokens", 0)
             except (FileNotFoundError, json.JSONDecodeError, KeyError):
                 pass  # Use the account state we were given
 
