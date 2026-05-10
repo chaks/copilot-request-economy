@@ -109,6 +109,8 @@ session['queue'].append({
     'task_type': turn.get('task_type', 'unknown'),
     'flushed_at_session_turn': session.get('session_turn_count', 0),
     'is_root': turn.get('is_root', True),
+    'input_tokens': turn.get('input_tokens', 0),
+    'output_tokens': turn.get('output_tokens', 0),
 })
 with open(session_file, 'w') as f:
     json.dump(session, f)
@@ -119,27 +121,7 @@ with open(session_file, 'w') as f:
   # Second: group queue entries by root boundaries and flush to budget.json
   # Consecutive non-root entries are bundled with their preceding root entry.
 
-  # Parse tokens from the latest process log
-  COPILOT_LOGS_DIR="${HOME}/.copilot/logs"
-
-  TOKENS_JSON=$(python3 -c "
-import sys
-sys.path.insert(0, '${LIB_DIR}')
-from tokens import find_latest_process_log, parse_tokens_from_log
-
-log_path = find_latest_process_log('${COPILOT_LOGS_DIR}')
-if log_path:
-    result = parse_tokens_from_log(log_path)
-else:
-    result = {'input_tokens': 0, 'output_tokens': 0}
-import json
-print(json.dumps(result))
-" 2>/dev/null || echo '{"input_tokens": 0, "output_tokens": 0}')
-
-  INPUT_TOKENS=$(printf '%s' "$TOKENS_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin)['input_tokens'])")
-  OUTPUT_TOKENS=$(printf '%s' "$TOKENS_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin)['output_tokens'])")
-
-  INPUT_TOKENS="$INPUT_TOKENS" OUTPUT_TOKENS="$OUTPUT_TOKENS" python3 -c "
+  python3 -c "
 import sys, json, os
 sys.path.insert(0, '${LIB_DIR}')
 from account import load_budget, log_request
@@ -182,14 +164,14 @@ budget = load_budget('${BUDGET_FILE}')
 input_tokens_total = int(os.environ.get('INPUT_TOKENS', 0))
 output_tokens_total = int(os.environ.get('OUTPUT_TOKENS', 0))
 
-# First pass: calculate total conversational turns for proportional distribution
-total_session_turns = 0
-group_data = []
+# Process each group with direct token accumulation (no proportional distribution needed)
 for group in groups:
     prev_flush = 0
     turns = 0
     tools = 0
     files = 0
+    input_tokens = 0
+    output_tokens = 0
     task_type = group[0].get('task_type', 'unknown')
     for entry in group:
         at = entry.get('flushed_at_session_turn', 0)
@@ -197,24 +179,8 @@ for group in groups:
         prev_flush = at
         tools += entry.get('tool_count', 0)
         files += entry.get('files_affected', 0)
-    total_session_turns += turns
-    group_data.append((task_type, tools, files, turns))
-
-# Second pass: log each group with proportionally distributed tokens
-# Track remainder to avoid losing tokens to integer truncation
-input_rem = 0.0
-output_rem = 0.0
-for task_type, tools, files, turns in group_data:
-    if total_session_turns > 0:
-        exact_input = input_tokens_total * turns / total_session_turns + input_rem
-        exact_output = output_tokens_total * turns / total_session_turns + output_rem
-        group_input = int(exact_input)
-        group_output = int(exact_output)
-        input_rem = exact_input - group_input
-        output_rem = exact_output - group_output
-    else:
-        group_input = 0
-        group_output = 0
+        input_tokens += entry.get('input_tokens', 0)
+        output_tokens += entry.get('output_tokens', 0)
 
     log_request(
         budget, '${BUDGET_FILE}',
@@ -224,8 +190,8 @@ for task_type, tools, files, turns in group_data:
         files_affected=files,
         conversational_turns=turns,
         outcome='success',
-        input_tokens=group_input,
-        output_tokens=group_output,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
     )
 
 os.remove(session_file)
