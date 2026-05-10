@@ -226,10 +226,20 @@ def get_efficiency_summary(account: BudgetAccount) -> str:
     total_traditional = total_requests + total_saved
     avg_savings = int((total_saved / total_traditional) * 100) if total_traditional > 0 else 0
 
+    total_input_tokens = account.total_input_tokens
+    total_output_tokens = account.total_output_tokens
+
+    def format_tokens(n: int) -> str:
+        if n == 0:
+            return "Token data unavailable (enable --log-level debug)"
+        return f"{n:,}"
+
     lines = [
         "Session Summary:",
         "─" * 30,
         f"Premium requests: {total_requests}",
+        f"Input tokens: {format_tokens(total_input_tokens)}",
+        f"Output tokens: {format_tokens(total_output_tokens)}",
         f"Total conversational turns: {total_conversational_turns}",
         f"Requests saved: {total_saved}",
         f"Savings: {avg_savings}%",

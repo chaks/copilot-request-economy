@@ -118,6 +118,27 @@ with open(session_file, 'w') as f:
 
   # Second: group queue entries by root boundaries and flush to budget.json
   # Consecutive non-root entries are bundled with their preceding root entry.
+
+  # Parse tokens from the latest process log
+  COPILOT_LOGS_DIR="${HOME}/.copilot/logs"
+
+  TOKENS_JSON=$(python3 -c "
+import sys
+sys.path.insert(0, '${LIB_DIR}')
+from tokens import find_latest_process_log, parse_tokens_from_log
+
+log_path = find_latest_process_log('${COPILOT_LOGS_DIR}')
+if log_path:
+    result = parse_tokens_from_log(log_path)
+else:
+    result = {'input_tokens': 0, 'output_tokens': 0}
+import json
+print(json.dumps(result))
+" 2>/dev/null || echo '{"input_tokens": 0, "output_tokens": 0}')
+
+  INPUT_TOKENS=$(printf '%s' "$TOKENS_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin)['input_tokens'])")
+  OUTPUT_TOKENS=$(printf '%s' "$TOKENS_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin)['output_tokens'])")
+
   python3 -c "
 import sys, json, os
 sys.path.insert(0, '${LIB_DIR}')
@@ -177,6 +198,8 @@ for group in groups:
         files_affected=total_files,
         conversational_turns=total_turns,
         outcome='success',
+        input_tokens=${INPUT_TOKENS:-0},
+        output_tokens=${OUTPUT_TOKENS:-0},
     )
 
 os.remove(session_file)
