@@ -78,6 +78,56 @@ print(get_remaining(b))
 fi
 
 if [[ "$EVENT" == "sessionEnd" ]]; then
+  # Resolve session ID to locate events.jsonl (source of truth for token data)
+  SESSION_ID=""
+  if [[ -f "${RUNTIME_DIR}/session_id.txt" ]]; then
+    SESSION_ID=$(cat "${RUNTIME_DIR}/session_id.txt" 2>/dev/null || echo "")
+  fi
+
+  # Extract session-wide token totals from Copilot's events.jsonl.
+  # Copilot CLI does NOT send token data to hooks via stdin; it persists
+  # modelMetrics to events.jsonl per session.
+  SESSION_TOKENS=$(python3 -c "
+import json, os, glob
+
+session_id = '${SESSION_ID}'
+totals = {'input': 0, 'output': 0}
+
+# Find the events file for this session
+candidates = [
+    os.path.expanduser(f'~/.copilot/session-state/{session_id}/events.jsonl'),
+]
+# Also check all recent sessions if we can't match by ID
+if not os.path.exists(candidates[0]):
+    candidates = sorted(
+        glob.glob(os.path.expanduser('~/.copilot/session-state/*/events.jsonl')),
+        key=os.path.getmtime,
+        reverse=True,
+    )[:5]  # Check 5 most recent sessions
+
+for events_file in candidates:
+    if not os.path.exists(events_file):
+        continue
+    try:
+        with open(events_file) as f:
+            for line in f:
+                obj = json.loads(line)
+                mm = obj.get('data', {}).get('modelMetrics', {})
+                for model_data in mm.values():
+                    usage = model_data.get('usage', {})
+                    totals['input'] += usage.get('inputTokens', 0)
+                    totals['output'] += usage.get('outputTokens', 0)
+        if totals['input'] > 0 or totals['output'] > 0:
+            break  # Found data, stop searching
+    except (json.JSONDecodeError, IOError):
+        continue
+
+print(f\"{totals['input']} {totals['output']}\")
+" 2>/dev/null || echo "0 0")
+
+  INPUT_TOKENS_SESSION=$(echo "$SESSION_TOKENS" | awk '{print $1}')
+  OUTPUT_TOKENS_SESSION=$(echo "$SESSION_TOKENS" | awk '{print $2}')
+
   # Flush any remaining turn into the session queue, then flush the entire
   # queue to budget.json with the final conversational_turns count.
   SESSION_FILE="${RUNTIME_DIR}/session_state.json"
@@ -109,8 +159,6 @@ session['queue'].append({
     'task_type': turn.get('task_type', 'unknown'),
     'flushed_at_session_turn': session.get('session_turn_count', 0),
     'is_root': turn.get('is_root', True),
-    'input_tokens': turn.get('input_tokens', 0),
-    'output_tokens': turn.get('output_tokens', 0),
 })
 with open(session_file, 'w') as f:
     json.dump(session, f)
@@ -120,6 +168,8 @@ with open(session_file, 'w') as f:
 
   # Second: group queue entries by root boundaries and flush to budget.json
   # Consecutive non-root entries are bundled with their preceding root entry.
+  # Session-wide token totals from events.jsonl are distributed proportionally
+  # by each group's conversational turn count.
 
   python3 -c "
 import sys, json, os
@@ -158,29 +208,32 @@ if current_group:
 
 budget = load_budget('${BUDGET_FILE}')
 
-# Parse tokens once for the entire session, then distribute proportionally
-# across groups based on conversational turns. Tokens are passed via
-# environment variables to prevent shell injection into Python source.
-input_tokens_total = int(os.environ.get('INPUT_TOKENS', 0))
-output_tokens_total = int(os.environ.get('OUTPUT_TOKENS', 0))
+# Session-wide token totals from events.jsonl
+input_tokens_total = int('${INPUT_TOKENS_SESSION}' or '0')
+output_tokens_total = int('${OUTPUT_TOKENS_SESSION}' or '0')
 
-# Process each group with direct token accumulation (no proportional distribution needed)
+# Compute conversational turns per group for proportional distribution
+group_turns = []
 for group in groups:
     prev_flush = 0
     turns = 0
-    tools = 0
-    files = 0
-    input_tokens = 0
-    output_tokens = 0
-    task_type = group[0].get('task_type', 'unknown')
     for entry in group:
         at = entry.get('flushed_at_session_turn', 0)
         turns += max(1, at - prev_flush)
         prev_flush = at
-        tools += entry.get('tool_count', 0)
-        files += entry.get('files_affected', 0)
-        input_tokens += entry.get('input_tokens', 0)
-        output_tokens += entry.get('output_tokens', 0)
+    group_turns.append(turns)
+
+total_turns = sum(group_turns)
+
+for group, turns in zip(groups, group_turns):
+    # Proportional token distribution by conversational turns
+    fraction = turns / total_turns if total_turns > 0 else 0
+    group_input = round(input_tokens_total * fraction)
+    group_output = round(output_tokens_total * fraction)
+
+    tools = sum(e.get('tool_count', 0) for e in group)
+    files = sum(e.get('files_affected', 0) for e in group)
+    task_type = group[0].get('task_type', 'unknown')
 
     log_request(
         budget, '${BUDGET_FILE}',
@@ -190,12 +243,15 @@ for group in groups:
         files_affected=files,
         conversational_turns=turns,
         outcome='success',
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
+        input_tokens=group_input,
+        output_tokens=group_output,
     )
 
 os.remove(session_file)
 " 2>/dev/null || true
+
+  # Clean up session tracking files
+  rm -f "${RUNTIME_DIR}/session_id.txt"
 
   # Generate and display session summary
   python3 -c "

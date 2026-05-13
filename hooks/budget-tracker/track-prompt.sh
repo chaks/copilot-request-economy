@@ -29,14 +29,12 @@ INPUT=$(cat)
 EVENT=""
 TOOL_NAME=""
 PROMPT_TEXT=""
-INPUT_TOKENS=""
-OUTPUT_TOKENS=""
+SESSION_ID=""
 if command -v jq &>/dev/null; then
   EVENT=$(printf '%s' "$INPUT" | jq -r '.event // .hookEvent // empty' 2>/dev/null || echo "")
   TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.toolName // empty' 2>/dev/null || echo "")
   PROMPT_TEXT=$(printf '%s' "$INPUT" | jq -r '.prompt // .userMessage // empty' 2>/dev/null || echo "")
-  INPUT_TOKENS=$(printf '%s' "$INPUT" | jq -r '.inputTokens // empty' 2>/dev/null || echo "")
-  OUTPUT_TOKENS=$(printf '%s' "$INPUT" | jq -r '.outputTokens // empty' 2>/dev/null || echo "")
+  SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.sessionId // .session_id // empty' 2>/dev/null || echo "")
 fi
 if [[ -z "$EVENT" ]]; then
   EVENT="${COPILOT_HOOK_EVENT:-unknown}"
@@ -157,13 +155,9 @@ print(json.dumps(entry))
 # ── Increment tool counter for current turn ────────────────────────
 increment_turn() {
   local tool_name="$1"
-  local input_tokens="$2"
-  local output_tokens="$3"
 
   # Export for safe Python access
   export TOOL_NAME_ENV="${tool_name}"
-  export INPUT_TOKENS_ENV="${input_tokens}"
-  export OUTPUT_TOKENS_ENV="${output_tokens}"
 
   python3 -c "
 import sys, json, os
@@ -180,14 +174,6 @@ turn['tool_count'] = turn.get('tool_count', 0) + 1
 tool = os.environ.get('TOOL_NAME_ENV', '')
 if tool in ('edit', 'write', 'create', 'notebook_edit'):
     turn['files_affected'] = turn.get('files_affected', 0) + 1
-
-# Accumulate token usage
-input_tokens = os.environ.get('INPUT_TOKENS_ENV', '')
-output_tokens = os.environ.get('OUTPUT_TOKENS_ENV', '')
-if input_tokens.isdigit():
-    turn['input_tokens'] = turn.get('input_tokens', 0) + int(input_tokens)
-if output_tokens.isdigit():
-    turn['output_tokens'] = turn.get('output_tokens', 0) + int(output_tokens)
 
 with open(turn_file, 'w') as f:
     json.dump(turn, f)
@@ -215,6 +201,10 @@ with open(sf, 'w') as f:
 # ── Event dispatch ─────────────────────────────────────────────────
 case "$EVENT" in
   userPromptSubmitted)
+    # Capture session ID from first prompt — used at sessionEnd to locate events.jsonl
+    if [[ -n "$SESSION_ID" && ! -f "${RUNTIME_DIR}/session_id.txt" ]]; then
+      echo "$SESSION_ID" > "${RUNTIME_DIR}/session_id.txt"
+    fi
     if [[ -n "$PROMPT_TEXT" ]]; then
       increment_session_count
       flush_turn
@@ -223,7 +213,7 @@ case "$EVENT" in
     ;;
   postToolUse)
     if [[ -n "$TOOL_NAME" ]]; then
-      increment_turn "$TOOL_NAME" "$INPUT_TOKENS" "$OUTPUT_TOKENS"
+      increment_turn "$TOOL_NAME"
     fi
     ;;
   # sessionEnd is handled by track-session.sh
