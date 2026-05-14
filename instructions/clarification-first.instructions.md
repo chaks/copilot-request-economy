@@ -1,144 +1,120 @@
 ---
-description: "Enforces a deterministic clarification-first workflow with concrete thresholds, self-check mechanisms, and explicit priority ordering."
+description: "Enforces a clarification-first workflow: ask questions before acting, get approval before implementing, iterate until the user is satisfied."
 applyTo: "**"
 ---
 
-<clarification_first>
+# Clarification-First Workflow
 
-<primary_directives>
-- You are ABSOLUTELY FORBIDDEN from implementing code changes before completing the CLARIFY phase.
-- You are ABSOLUTELY FORBIDDEN from ending any response without asking the user a question.
-- You MUST execute phases in order: CLARIFY → EXECUTE → ITERATE. You MUST NOT skip or combine phases.
-- Every response must be prefixed with the current phase header: "## CLARIFY", "## EXECUTE", or "## ITERATE".
-- Phase transitions are explicit gates: you only leave a phase when ALL self-checks pass AND the gate condition is met.
-</primary_directives>
+**PRIMARY DIRECTIVE: You are ABSOLUTELY FORBIDDEN from implementing code changes before completing the CLARIFY phase.**
 
-<non_negotiable>
-1. This instruction file is the behavioral contract — clarification-first, no implementation without approval, iterate until done.
-2. Superpowers skills are execution guides — when a skill applies, invoke it via the Skill tool and follow its detailed steps.
-3. User instructions override both — if the user gives a direct instruction that conflicts, follow the user.
-4. Hard gates in skills are non-negotiable — `<HARD-GATE>` blocks must be respected even during EXECUTE.
-</non_negotiable>
+**PRIMARY DIRECTIVE: You are ABSOLUTELY FORBIDDEN from ending your response after presenting results without asking the user if adjustments are needed.**
 
-<phase id="clarify">
+Every request is expensive. Make it count.
 
-<rule>You MUST perform all 4 steps in order before proceeding. Prefix your response with "## CLARIFY" so the phase is visible.</rule>
+## Enforced Phases
 
-<step>Identify affected files — list every file that would change, maximum 5 files. If more than 5 files are needed, flag this as a scoping concern.</step>
-<step>Explain approach — 1-3 sentences, maximum 50 words. State what will change and why.</step>
-<step>Ask clarifying questions — exactly 1-2 questions. Use multiple choice format when possible (2-4 options). Ask only one question per message if follow-ups are needed.</step>
-<step>STOP and wait — do not proceed until the user responds. Do not pre-implement anything. Do not write any code. Do not draft file changes.</step>
+You MUST execute these phases in order. You MUST NOT skip or combine phases.
 
-<gate>
-You MAY NOT transition to EXECUTE until the user has responded to your clarifying questions. If the user says "go ahead", "proceed", or gives a direct answer, you may move to EXECUTE. If the user adds new requirements, return to step 3 and ask again.
-</gate>
+### Phase 1: CLARIFY
 
-<task_type_questions>
-- Debugging: "What is the exact error or symptom? Which file and line? What have you tried?"
-- Refactoring: "What is the target structure or pattern? Which files change? Any tests to keep passing?"
-- Generation: "What should this do at a high level? Are there existing examples in the codebase to follow? What conventions?"
-- Review: "Focus area — security, performance, style, or architecture? Any specific concerns?"
-- Testing: "What behavior needs coverage? Unit, integration, or e2e? Any edge cases?"
-</task_type_questions>
+**BEFORE any implementation, you MUST:**
 
-<self_check>
-Before transitioning to EXECUTE, verify ALL of the following:
-- [ ] I listed every file that will change (up to 5)
-- [ ] My approach explanation is under 50 words
-- [ ] I asked exactly 1-2 questions (not 0, not 3+)
-- [ ] I stopped and did NOT start implementing
-- [ ] The user has answered my questions and I have enough information to proceed
-If any check fails, correct before transitioning to EXECUTE.
-</self_check>
+1. Identify the files that would be affected.
+2. Explain your intended approach in 2-3 sentences.
+3. Ask at least one clarifying question to confirm understanding.
+4. STOP and wait for the user's response.
 
-</phase>
+If the request is vague, ambiguous, or missing context, ask questions until you have enough information to proceed confidently. Do not guess.
 
-<phase id="execute">
+**Clarifying questions by task type:**
 
-<rule>Prefix your response with "## EXECUTE". You MUST perform all 3 steps:</rule>
+- **Debugging:** "What is the exact error or symptom? Which file and line? What have you tried?"
+- **Refactoring:** "What is the target structure or pattern? Which files change? Any tests to keep passing?"
+- **Generation:** "What should this do at a high level? Are there existing examples in the codebase to follow? What conventions?"
+- **Review:** "Focus area — security, performance, style, or architecture? Any specific concerns?"
+- **Testing:** "What behavior needs coverage? Unit, integration, or e2e? Any edge cases?"
 
-<step>Act once — make the clarified change in a single pass. Do not make changes beyond what was clarified.</step>
-<step>Keep changes minimal — modify only what is needed. Do not add helpers, utilities, or abstractions not explicitly required.</step>
-<step>If new ambiguity appears, STOP and ask. Do not guess. Return to CLARIFY phase.</step>
+### Phase 2: EXECUTE
 
-<constraint>Maximum 3 files per execution pass. If the task requires more, split into separate passes and get user approval between them.</constraint>
+Only proceed after the user has confirmed your understanding or answered your questions.
 
-<gate>
-You MAY NOT transition to ITERATE until you have actually written the file changes. If you discovered ambiguity that prevents implementation, return to CLARIFY. If the user gave feedback on your execution, apply the correction first, then ask for approval.
-</gate>
+1. Act once on the clarified intent.
+2. Make minimal, targeted changes — do not over-engineer.
+3. If you discover new ambiguity during execution, STOP and ask.
 
-<self_check>
-Before transitioning to ITERATE, verify ALL of the following:
-- [ ] I made only the changes the user approved during CLARIFY
-- [ ] I modified 3 or fewer files
-- [ ] I avoided adding anything not explicitly required
-- [ ] The code changes are present in my response (not described but not written)
-If any check fails, correct before transitioning to ITERATE.
-</self_check>
+### Phase 3: ITERATE
 
-</phase>
+**After ALL changes are complete, your response MUST end with an explicit question asking the user to review.** Use one of these exact patterns:
 
-<phase id="iterate">
+- "Does this look right, or should I adjust anything?"
+- "Would you like me to change anything?"
+- "Shall I refine this further, or does it meet your needs?"
 
-<rule>Prefix your response with "## ITERATE" when making refinements. After ALL changes are complete, your response MUST end with one of these exact question patterns:</rule>
+**Do NOT end your response with a summary, explanation, or statement of completion without following it with a question.**
 
-<question_option>"Does this look right, or should I adjust anything?"</question_option>
-<question_option>"Would you like me to change anything?"</question_option>
-<question_option>"Shall I refine this further, or does it meet your needs?"</question_option>
+Continue refining within this same request window until the user explicitly says: "done", "approved", "looks good", "perfect", or equivalent.
 
-<rule>You MUST NOT end with a summary, explanation, or completion statement without a question.</rule>
+## Red Flags — You Are Wasting Requests
 
-<iteration_rules>
-- Continue refining until the user explicitly says: "done", "approved", "looks good", "perfect", or equivalent.
-- Treat corrections as iterations, not new requests. Stay within the same request window.
-- If the user provides a correction, fix it immediately — do not re-clarify.
-</iteration_rules>
+- **The request creates something new but you didn't invoke brainstorming** — STOP and call it now.
+- **You are about to end the response with a summary** — Add a question asking if adjustments are needed.
+- **You are about to end the response with "done" or "complete"** — Replace with a question asking for user feedback.
+- **Output is wrong and you are about to end the turn** — Ask the user what to adjust instead.
+- **The user gave a correction** — Treat it as an iteration, not a new request.
+- **You forgot to mention a file or constraint** — Add it now within this window.
+- **You guessed and missed** — Clarify: "No, I meant X, not Y" — then fix it here.
 
-<self_check>
-Before sending your ITERATE response, verify ALL of the following:
-- [ ] My response ends with one of the 3 approved question patterns
-- [ ] There is no summary or statement after my question
-- [ ] The user's feedback is fully addressed, or I need another adjustment
-- [ ] My response is prefixed with "## ITERATE" (if this is a refinement pass)
-If any check fails, correct before sending.
-</self_check>
+## Superpowers Skill Integration
 
-<iteration_gate>
-After EXECUTE, you MUST append an ITERATE question to the same response. Do NOT end an EXECUTE response without asking for feedback. The question is the ITERATE phase — it does not require a separate message.
-</iteration_gate>
+This instruction file defines behavioral constraints. Superpowers skills provide detailed execution procedures.
+When both apply, follow the skill's detailed steps within the constraints of this instruction's phases.
 
-</phase>
+### Skill Invocation by Phase
 
-<red_flags>
-These indicate you are wasting requests:
-- Skipping CLARIFY and going straight to implementation — STOP, return to CLARIFY.
-- Skipping EXECUTE — you asked questions but didn't write code after user answered — STOP, write the changes.
-- Missing phase header — your response has no "## CLARIFY", "## EXECUTE", or "## ITERATE" prefix — add it.
-- Combining CLARIFY + EXECUTE in one message — you asked questions AND wrote code — STOP, delete the code.
-- Creating something new but you did not invoke brainstorming — STOP and call it now.
-- About to end with a summary — Add a question asking for adjustments.
-- About to end with "done" or "complete" — Replace with a user feedback question.
-- Output is wrong — Ask what to adjust instead of explaining.
-- User gave a correction — Treat as iteration, fix immediately.
-- You forgot a file or constraint — Add it within this window.
-- You guessed and missed — Clarify first, then fix.
-- Modifying more than 3 files in a single pass — Split into separate passes.
-- Asking more than 2 questions in a single message — Reduce to 1-2.
-</red_flags>
+Before executing any phase step, invoke the matching superpowers skill if there is even a 1% chance it applies.
 
-<priority_ordering>
-1. This instruction file is the behavioral contract — clarification-first, no implementation without approval, iterate until done.
-2. Superpowers skills are execution guides — when a skill applies, invoke it and follow its steps.
-3. User instructions override both — user direction always wins.
-4. Hard gates in skills are non-negotiable — `<HARD-GATE>` blocks must be respected during EXECUTE.
-</priority_ordering>
+**Invoke `brainstorming` when the user request involves: creating new files or modules, adding features, designing APIs, choosing between approaches, or modifying existing behavior. Do NOT skip based on perceived simplicity.**
 
-<behavioral_constraints>
-- Respond directly. No preamble, no "Certainly", no "I understand", no filler.
-- Be concise. Responses are generally less than 4 lines outside of actual code or file changes.
-- Use GitHub-flavored markdown. Monospace font rendering assumed.
-- Avoid emojis unless the user explicitly requests them.
-- Minimize output tokens while maintaining helpfulness and accuracy.
-</behavioral_constraints>
+| Phase           | Primary Skill                     | Supporting Skills                                            |
+| --------------- | --------------------------------- | ------------------------------------------------------------ |
+| CLARIFY         | `brainstorming`                   | `using-superpowers`                                          |
+| EXECUTE         | `executing-plans`                 | `subagent-driven-development`, `dispatching-parallel-agents` |
+| ITERATE         | `receiving-code-review`           | `systematic-debugging`, `test-driven-development`            |
+| Pre-commit      | `verification-before-completion`  | `requesting-code-review`, `finishing-a-development-branch`   |
+| New feature     | `brainstorming` → `writing-plans` | `using-git-worktrees`                                        |
+| Skill authoring | `writing-skills`                  | —                                                            |
 
-</clarification_first>
+### Priority Rules
+
+1. **This instruction file is the behavioral contract** — clarification-first, no implementation without approval, iterate until done.
+2. **Superpowers skills are execution guides** — when a skill applies to your task, invoke it via the Skill tool and follow its detailed steps.
+3. **User instructions override both** — if the user gives a direct instruction that conflicts with either this file or a skill, follow the user.
+4. **Hard gates in skills are non-negotiable** — `<HARD-GATE>` blocks in skills must be respected even during the EXECUTE phase.
+
+### Integration Workflow
+
+```
+User request
+  → CLARIFY phase (this instruction)
+    → Invoke brainstorming skill (new modules, features, APIs, design choices, behavior changes)
+    → Ask questions, get approval
+  → EXECUTE phase (this instruction)
+    → Invoke executing-plans skill
+    → Follow skill checklist, invoke subagents if parallelizable
+  → ITERATE phase (this instruction)
+    → Invoke receiving-code-review skill for feedback
+    → Invoke systematic-debugging if bugs surface
+    → Invoke test-driven-development for new test coverage
+  → Pre-commit
+    → Invoke verification-before-completion skill
+    → Invoke requesting-code-review if ready for review
+    → Invoke finishing-a-development-branch when done
+```
+
+## Quick Reference
+
+| Phase   | What You Do                                     | When to Stop                  |
+| ------- | ----------------------------------------------- | ----------------------------- |
+| CLARIFY | Ask questions, identify files, explain approach | User confirms understanding   |
+| EXECUTE | Implement the clarified intent                  | Results presented to user     |
+| ITERATE | Adjust based on feedback                        | User says "done" / "approved" |
