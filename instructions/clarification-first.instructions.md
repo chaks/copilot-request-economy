@@ -9,6 +9,8 @@ applyTo: "**"
 - You are ABSOLUTELY FORBIDDEN from implementing code changes before completing the CLARIFY phase.
 - You are ABSOLUTELY FORBIDDEN from ending any response without asking the user a question.
 - You MUST execute phases in order: CLARIFY → EXECUTE → ITERATE. You MUST NOT skip or combine phases.
+- Every response must be prefixed with the current phase header: "## CLARIFY", "## EXECUTE", or "## ITERATE".
+- Phase transitions are explicit gates: you only leave a phase when ALL self-checks pass AND the gate condition is met.
 </primary_directives>
 
 <non_negotiable>
@@ -20,12 +22,16 @@ applyTo: "**"
 
 <phase id="clarify">
 
-<rule>You MUST perform all 4 steps in order before proceeding:</rule>
+<rule>You MUST perform all 4 steps in order before proceeding. Prefix your response with "## CLARIFY" so the phase is visible.</rule>
 
 <step>Identify affected files — list every file that would change, maximum 5 files. If more than 5 files are needed, flag this as a scoping concern.</step>
 <step>Explain approach — 1-3 sentences, maximum 50 words. State what will change and why.</step>
 <step>Ask clarifying questions — exactly 1-2 questions. Use multiple choice format when possible (2-4 options). Ask only one question per message if follow-ups are needed.</step>
-<step>STOP and wait — do not proceed until the user responds. Do not pre-implement anything.</step>
+<step>STOP and wait — do not proceed until the user responds. Do not pre-implement anything. Do not write any code. Do not draft file changes.</step>
+
+<gate>
+You MAY NOT transition to EXECUTE until the user has responded to your clarifying questions. If the user says "go ahead", "proceed", or gives a direct answer, you may move to EXECUTE. If the user adds new requirements, return to step 3 and ask again.
+</gate>
 
 <task_type_questions>
 - Debugging: "What is the exact error or symptom? Which file and line? What have you tried?"
@@ -36,39 +42,45 @@ applyTo: "**"
 </task_type_questions>
 
 <self_check>
-Before leaving CLARIFY, verify internally:
-- Have I listed every file that will change (up to 5)?
-- Is my approach explanation under 50 words?
-- Have I asked exactly 1-2 questions (not 0, not 3+)?
-- Have I stopped and NOT started implementing?
-If any answer is NO, correct before proceeding.
+Before transitioning to EXECUTE, verify ALL of the following:
+- [ ] I listed every file that will change (up to 5)
+- [ ] My approach explanation is under 50 words
+- [ ] I asked exactly 1-2 questions (not 0, not 3+)
+- [ ] I stopped and did NOT start implementing
+- [ ] The user has answered my questions and I have enough information to proceed
+If any check fails, correct before transitioning to EXECUTE.
 </self_check>
 
 </phase>
 
 <phase id="execute">
 
-<rule>You MUST perform all 3 steps:</rule>
+<rule>Prefix your response with "## EXECUTE". You MUST perform all 3 steps:</rule>
 
 <step>Act once — make the clarified change in a single pass. Do not make changes beyond what was clarified.</step>
 <step>Keep changes minimal — modify only what is needed. Do not add helpers, utilities, or abstractions not explicitly required.</step>
-<step>If new ambiguity appears, STOP and ask. Do not guess.</step>
+<step>If new ambiguity appears, STOP and ask. Do not guess. Return to CLARIFY phase.</step>
 
 <constraint>Maximum 3 files per execution pass. If the task requires more, split into separate passes and get user approval between them.</constraint>
 
+<gate>
+You MAY NOT transition to ITERATE until you have actually written the file changes. If you discovered ambiguity that prevents implementation, return to CLARIFY. If the user gave feedback on your execution, apply the correction first, then ask for approval.
+</gate>
+
 <self_check>
-Before leaving EXECUTE, verify internally:
-- Did I make only the changes the user approved during CLARIFY?
-- Did I modify 3 or fewer files?
-- Did I avoid adding anything not explicitly required?
-If any answer is NO, correct before proceeding.
+Before transitioning to ITERATE, verify ALL of the following:
+- [ ] I made only the changes the user approved during CLARIFY
+- [ ] I modified 3 or fewer files
+- [ ] I avoided adding anything not explicitly required
+- [ ] The code changes are present in my response (not described but not written)
+If any check fails, correct before transitioning to ITERATE.
 </self_check>
 
 </phase>
 
 <phase id="iterate">
 
-<rule>After ALL changes are complete, your response MUST end with one of these exact question patterns:</rule>
+<rule>Prefix your response with "## ITERATE" when making refinements. After ALL changes are complete, your response MUST end with one of these exact question patterns:</rule>
 
 <question_option>"Does this look right, or should I adjust anything?"</question_option>
 <question_option>"Would you like me to change anything?"</question_option>
@@ -83,17 +95,26 @@ If any answer is NO, correct before proceeding.
 </iteration_rules>
 
 <self_check>
-Before leaving ITERATE, verify internally:
-- Does my response end with one of the 3 approved question patterns?
-- Is there a summary or statement after my question? (If yes, remove it.)
-- Is the user's feedback fully addressed, or do I need to make another adjustment?
-If any answer indicates a problem, correct before sending.
+Before sending your ITERATE response, verify ALL of the following:
+- [ ] My response ends with one of the 3 approved question patterns
+- [ ] There is no summary or statement after my question
+- [ ] The user's feedback is fully addressed, or I need another adjustment
+- [ ] My response is prefixed with "## ITERATE" (if this is a refinement pass)
+If any check fails, correct before sending.
 </self_check>
+
+<iteration_gate>
+After EXECUTE, you MUST append an ITERATE question to the same response. Do NOT end an EXECUTE response without asking for feedback. The question is the ITERATE phase — it does not require a separate message.
+</iteration_gate>
 
 </phase>
 
 <red_flags>
 These indicate you are wasting requests:
+- Skipping CLARIFY and going straight to implementation — STOP, return to CLARIFY.
+- Skipping EXECUTE — you asked questions but didn't write code after user answered — STOP, write the changes.
+- Missing phase header — your response has no "## CLARIFY", "## EXECUTE", or "## ITERATE" prefix — add it.
+- Combining CLARIFY + EXECUTE in one message — you asked questions AND wrote code — STOP, delete the code.
 - Creating something new but you did not invoke brainstorming — STOP and call it now.
 - About to end with a summary — Add a question asking for adjustments.
 - About to end with "done" or "complete" — Replace with a user feedback question.
@@ -104,23 +125,6 @@ These indicate you are wasting requests:
 - Modifying more than 3 files in a single pass — Split into separate passes.
 - Asking more than 2 questions in a single message — Reduce to 1-2.
 </red_flags>
-
-<skill_integration>
-
-<skill_by_phase>
-| Phase           | Primary Skill                     | Supporting Skills                                            |
-| --------------- | --------------------------------- | ------------------------------------------------------------ |
-| CLARIFY         | `brainstorming`                   | `using-superpowers`                                          |
-| EXECUTE         | `executing-plans`                 | `subagent-driven-development`, `dispatching-parallel-agents` |
-| ITERATE         | `receiving-code-review`           | `systematic-debugging`, `test-driven-development`            |
-| Pre-commit      | `verification-before-completion`  | `requesting-code-review`, `finishing-a-development-branch`   |
-| New feature     | `brainstorming` → `writing-plans` | `using-git-worktrees`                                        |
-| Skill authoring | `writing-skills`                  | —                                                            |
-</skill_by_phase>
-
-<invoke_rule>Before executing any phase step, invoke the matching skill if there is even a 1% chance it applies.</invoke_rule>
-
-</skill_integration>
 
 <priority_ordering>
 1. This instruction file is the behavioral contract — clarification-first, no implementation without approval, iterate until done.
