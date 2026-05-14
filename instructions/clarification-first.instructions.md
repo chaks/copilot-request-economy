@@ -21,18 +21,18 @@ You MUST execute these phases in order. You MUST NOT skip or combine phases.
 
 1. Identify the files that would be affected.
 2. Explain your intended approach in 2-3 sentences.
-3. Ask at least one clarifying question to confirm understanding.
+3. Use the `askQuestions` tool to ask at least one clarifying question to confirm understanding.
 4. STOP and wait for the user's response.
 
-If the request is vague, ambiguous, or missing context, ask questions until you have enough information to proceed confidently. Do not guess.
+If the request is vague, ambiguous, or missing context, use `askQuestions` repeatedly until you have enough information to proceed confidently. Do not guess.
 
-**Clarifying questions by task type:**
+**Use `askQuestions` with these question patterns by task type:**
 
-- **Debugging:** "What is the exact error or symptom? Which file and line? What have you tried?"
-- **Refactoring:** "What is the target structure or pattern? Which files change? Any tests to keep passing?"
-- **Generation:** "What should this do at a high level? Are there existing examples in the codebase to follow? What conventions?"
-- **Review:** "Focus area — security, performance, style, or architecture? Any specific concerns?"
-- **Testing:** "What behavior needs coverage? Unit, integration, or e2e? Any edge cases?"
+- **Debugging:** Ask about the exact error/symptom, file and line, and what has been tried.
+- **Refactoring:** Ask about the target structure/pattern, which files change, and tests to keep passing.
+- **Generation:** Ask what it should do at a high level, existing examples to follow, and conventions.
+- **Review:** Ask about focus area (security, performance, style, architecture) and specific concerns.
+- **Testing:** Ask what behavior needs coverage, unit/integration/e2e, and edge cases.
 
 ### Phase 2: EXECUTE
 
@@ -40,7 +40,7 @@ Only proceed after the user has confirmed your understanding or answered your qu
 
 1. Act once on the clarified intent.
 2. Make minimal, targeted changes — do not over-engineer.
-3. If you discover new ambiguity during execution, STOP and ask.
+3. If you discover new ambiguity during execution, STOP and use `askQuestions` to clarify.
 
 ### Phase 3: ITERATE
 
@@ -57,9 +57,9 @@ Continue refining within this same request window until the user explicitly says
 ## Red Flags — You Are Wasting Requests
 
 - **The request creates something new but you didn't invoke brainstorming** — STOP and call it now.
-- **You are about to end the response with a summary** — Add a question asking if adjustments are needed.
-- **You are about to end the response with "done" or "complete"** — Replace with a question asking for user feedback.
-- **Output is wrong and you are about to end the turn** — Ask the user what to adjust instead.
+- **You are about to end the response with a summary** — Use `askQuestions` to ask if adjustments are needed.
+- **You are about to end the response with "done" or "complete"** — Use `askQuestions` to ask for user feedback instead.
+- **Output is wrong and you are about to end the turn** — Use `askQuestions` to ask what to adjust instead.
 - **The user gave a correction** — Treat it as an iteration, not a new request.
 - **You forgot to mention a file or constraint** — Add it now within this window.
 - **You guessed and missed** — Clarify: "No, I meant X, not Y" — then fix it here.
@@ -70,8 +70,6 @@ This instruction file defines behavioral constraints. Superpowers skills provide
 When both apply, follow the skill's detailed steps within the constraints of this instruction's phases.
 
 ### Skill Invocation by Phase
-
-Before executing any phase step, invoke the matching superpowers skill if there is even a 1% chance it applies.
 
 **Invoke `brainstorming` when the user request involves: creating new files or modules, adding features, designing APIs, choosing between approaches, or modifying existing behavior. Do NOT skip based on perceived simplicity.**
 
