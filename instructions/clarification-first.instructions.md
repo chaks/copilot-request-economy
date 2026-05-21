@@ -82,6 +82,26 @@ When both apply, follow the skill's detailed steps within the constraints of thi
 | New feature     | `brainstorming` → `writing-plans` | `using-git-worktrees`                                        |
 | Skill authoring | `writing-skills`                  | —                                                            |
 
+### Post-Skill Gate
+
+**AFTER any SKILL tool completes, you MUST restore the clarification contract before continuing.** Skills are standalone instructions — most do NOT end with questions. You are responsible for enforcing the ask-before-acting principle regardless of how a skill concludes.
+
+| Phase where skill ran | What the skill likely did | What you MUST do next |
+|---|---|---|
+| CLARIFY (e.g. brainstorming) | Presented options, analysis, or questions it identified | Use `askQuestions` to ask the user at least one clarifying question. Do NOT proceed to EXECUTE until the user responds. |
+| EXECUTE (e.g. executing-plans, subagent-driven) | Implemented changes, wrote code, produced artifacts | Use `askQuestions` to ask the user to review the changes. Do NOT proceed to commit or mark complete until the user confirms. |
+| ITERATE (e.g. receiving-code-review, systematic-debugging) | Applied fixes, explained changes, or produced a diff | Use `askQuestions` to ask the user if the fix addresses their concern or if further adjustments are needed. |
+| Pre-commit (e.g. verification-before-completion) | Verified tests, checked lint, validated correctness | Use `askQuestions` to ask the user if they are ready to commit / create a PR, or if further changes are needed. |
+
+**Red flags — you broke the gate:**
+
+- A skill finished and you are about to summarize its output without asking the user anything — STOP, use `askQuestions`.
+- A subagent returned results and you are about to act on them — STOP, present the results and use `askQuestions`.
+- The skill produced a file/diff and you are about to say "done" — STOP, use `askQuestions` to ask for review.
+- The skill said "no further changes needed" and you are about to agree — STOP, the user decides if changes are needed.
+
+**This gate is non-negotiable.** Skills define their own exit behavior; this instruction ensures the clarification-first contract is always restored regardless of which skill ran or how it concluded.
+
 ### Priority Rules
 
 1. **This instruction file is the behavioral contract** — clarification-first, no implementation without approval, iterate until done.
@@ -95,16 +115,20 @@ When both apply, follow the skill's detailed steps within the constraints of thi
 User request
   → CLARIFY phase (this instruction)
     → Invoke brainstorming skill (new modules, features, APIs, design choices, behavior changes)
+    → Post-Skill Gate: askQuestions before proceeding
     → Ask questions, get approval
   → EXECUTE phase (this instruction)
     → Invoke executing-plans skill
+    → Post-Skill Gate: askQuestions after each skill/subagent completes
     → Follow skill checklist, invoke subagents if parallelizable
   → ITERATE phase (this instruction)
     → Invoke receiving-code-review skill for feedback
+    → Post-Skill Gate: askQuestions after each skill completes
     → Invoke systematic-debugging if bugs surface
     → Invoke test-driven-development for new test coverage
   → Pre-commit
     → Invoke verification-before-completion skill
+    → Post-Skill Gate: askQuestions before committing
     → Invoke requesting-code-review if ready for review
     → Invoke finishing-a-development-branch when done
 ```
@@ -116,3 +140,4 @@ User request
 | CLARIFY | Ask questions, identify files, explain approach | User confirms understanding   |
 | EXECUTE | Implement the clarified intent                  | Results presented to user     |
 | ITERATE | Adjust based on feedback                        | User says "done" / "approved" |
+| POST-SKILL | After ANY skill completes, ask `askQuestions` | User responds to the question |
