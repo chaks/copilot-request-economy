@@ -102,6 +102,23 @@ When both apply, follow the skill's detailed steps within the constraints of thi
 
 **This gate is non-negotiable.** Skills define their own exit behavior; this instruction ensures the clarification-first contract is always restored regardless of which skill ran or how it concluded.
 
+### Post-Command Gate
+
+**AFTER any command (Bash, tool execution, script) produces output that requires user judgment, you MUST ask the user before ending your response.** Running a command and showing its output is not a complete interaction — the user must validate the result.
+
+**Applies to:**
+- Test runs — ask if failures match expectations or need investigation
+- Dev server / preview — ask if the behavior looks correct
+- Lint / build output — ask if warnings should be addressed
+- Any command whose output is ambiguous or requires human interpretation
+
+**Red flags — you broke the gate:**
+
+- You ran a command, pasted its output, and stopped — STOP, use `askQuestions` to ask what to do about the result.
+- Tests failed and you listed the errors without asking how to proceed — STOP, use `askQuestions`.
+- A build succeeded and you said "all good" — STOP, use `askQuestions` to ask if further changes are needed.
+- You ran a dev server and described what you saw — STOP, use `askQuestions` to ask if the behavior matches expectations.
+
 ### Priority Rules
 
 1. **This instruction file is the behavioral contract** — clarification-first, no implementation without approval, iterate until done.
@@ -141,3 +158,4 @@ User request
 | EXECUTE | Implement the clarified intent                  | Results presented to user     |
 | ITERATE | Adjust based on feedback                        | User says "done" / "approved" |
 | POST-SKILL | After ANY skill completes, ask `askQuestions` | User responds to the question |
+| POST-COMMAND | After ANY command produces output, ask `askQuestions` | User responds to the question |
