@@ -86,12 +86,12 @@ When both apply, follow the skill's detailed steps within the constraints of thi
 
 **AFTER any SKILL tool completes, you MUST restore the clarification contract before continuing.** Skills are standalone instructions — most do NOT end with questions. You are responsible for enforcing the ask-before-acting principle regardless of how a skill concludes.
 
-| Phase where skill ran | What the skill likely did | What you MUST do next |
-|---|---|---|
-| CLARIFY (e.g. brainstorming) | Presented options, analysis, or questions it identified | Use `askQuestions` to ask the user at least one clarifying question. Do NOT proceed to EXECUTE until the user responds. |
-| EXECUTE (e.g. executing-plans, subagent-driven) | Implemented changes, wrote code, produced artifacts | Use `askQuestions` to ask the user to review the changes. Do NOT proceed to commit or mark complete until the user confirms. |
-| ITERATE (e.g. receiving-code-review, systematic-debugging) | Applied fixes, explained changes, or produced a diff | Use `askQuestions` to ask the user if the fix addresses their concern or if further adjustments are needed. |
-| Pre-commit (e.g. verification-before-completion) | Verified tests, checked lint, validated correctness | Use `askQuestions` to ask the user if they are ready to commit / create a PR, or if further changes are needed. |
+| Phase where skill ran                                      | What the skill likely did                               | What you MUST do next                                                                                                        |
+| ---------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| CLARIFY (e.g. brainstorming)                               | Presented options, analysis, or questions it identified | Use `askQuestions` to ask the user at least one clarifying question. Do NOT proceed to EXECUTE until the user responds.      |
+| EXECUTE (e.g. executing-plans, subagent-driven)            | Implemented changes, wrote code, produced artifacts     | Use `askQuestions` to ask the user to review the changes. Do NOT proceed to commit or mark complete until the user confirms. |
+| ITERATE (e.g. receiving-code-review, systematic-debugging) | Applied fixes, explained changes, or produced a diff    | Use `askQuestions` to ask the user if the fix addresses their concern or if further adjustments are needed.                  |
+| Pre-commit (e.g. verification-before-completion)           | Verified tests, checked lint, validated correctness     | Use `askQuestions` to ask the user if they are ready to commit / create a PR, or if further changes are needed.              |
 
 **Red flags — you broke the gate:**
 
@@ -107,6 +107,7 @@ When both apply, follow the skill's detailed steps within the constraints of thi
 **AFTER any command (Bash, tool execution, script) produces output that requires user judgment, you MUST ask the user before ending your response.** Running a command and showing its output is not a complete interaction — the user must validate the result.
 
 **Applies to:**
+
 - Test runs — ask if failures match expectations or need investigation
 - Dev server / preview — ask if the behavior looks correct
 - Lint / build output — ask if warnings should be addressed
@@ -152,10 +153,10 @@ User request
 
 ## Quick Reference
 
-| Phase   | What You Do                                     | When to Stop                  |
-| ------- | ----------------------------------------------- | ----------------------------- |
-| CLARIFY | Ask questions, identify files, explain approach | User confirms understanding   |
-| EXECUTE | Implement the clarified intent                  | Results presented to user     |
-| ITERATE | Adjust based on feedback                        | User says "done" / "approved" |
-| POST-SKILL | After ANY skill completes, ask `askQuestions` | User responds to the question |
-| POST-COMMAND | After ANY command produces output, ask `askQuestions` | User responds to the question |
+| Phase        | What You Do                                           | When to Stop                  |
+| ------------ | ----------------------------------------------------- | ----------------------------- |
+| CLARIFY      | Ask questions, identify files, explain approach       | User confirms understanding   |
+| EXECUTE      | Implement the clarified intent                        | Results presented to user     |
+| ITERATE      | Adjust based on feedback                              | User says "done" / "approved" |
+| POST-SKILL   | After ANY skill completes, use `askQuestions`         | User responds to the question |
+| POST-COMMAND | After ANY command produces output, use `askQuestions` | User responds to the question |
