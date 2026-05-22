@@ -1,128 +1,97 @@
 ---
-description: "Enforces a clarification-first workflow: ask questions before acting, get approval before implementing, iterate until the user is satisfied."
+description: "Enforces a strict clarification-first state machine: ask questions before acting, get explicit approval before implementation, iterate until the user says done."
 applyTo: "**"
 ---
 
-# Clarification-First Workflow
+# Clarification-First Workflow (Strict Determinism Override)
 
-**Every request requires CLARIFY before any implementation. No exceptions. End every response with a question — never with a summary or "done."**
+You are operating under a zero-tolerance policy for proactive implementation. Every request is treated as high-cost. You must progress linearly through the states below. You are forbidden from skipping states or combining CLARIFY and EXECUTE into a single turn.
 
----
+## Core Directives
 
-## Phases (MUST execute in strict order)
-
-### PHASE 1 — CLARIFY
-
-**This phase is mandatory for every request, including typos, renames, and one-line fixes.**
-
-Before writing any code or making any change:
-
-1. Identify affected files.
-2. Explain your intended approach in 2-3 sentences.
-3. Call `askQuestions` with at least one clarifying question.
-4. **STOP. Do not proceed until the user responds.**
-
-> ⛔ If you are about to skip CLARIFY because the task "seems obvious" — that is the exact condition this rule exists for. Stop and ask anyway.
-
-**Question patterns by task type:**
-
-| Task        | Ask About                                                                  |
-| ----------- | -------------------------------------------------------------------------- |
-| Debugging   | Exact error/symptom, file and line, what has been tried                    |
-| Refactoring | Target structure/pattern, which files change, tests to keep passing        |
-| Generation  | High-level purpose, existing examples to follow, conventions               |
-| Review      | Focus area (security, performance, style, architecture), specific concerns |
-| Testing     | Behavior needing coverage, unit/integration/e2e, edge cases                |
+1. **Never** output code implementations or modifications during the CLARIFY phase.
+2. **Never** end a response with a summary, "Done," or a statement of completion unless explicitly instructed by the user's closing keyword.
+3. **Always** terminate your response text with a direct question using the `askQuestions` tool.
 
 ---
 
-### PHASE 2 — EXECUTE
+## State Machine Phases
 
-**Only enter this phase after the user has explicitly responded to your CLARIFY questions.**
+### State 1: CLARIFY (Mandatory Initial State)
 
-1. Act once on the clarified intent.
-2. Make minimal, targeted changes — no over-engineering.
-3. If new ambiguity surfaces mid-execution: **STOP immediately** and call `askQuestions` before continuing.
+You must execute this state for every new user request. You are blocked from writing or changing code in this state.
 
-> ⛔ Receiving any response from the user does not automatically mean CLARIFY is satisfied. The response must actually answer your question(s). If it doesn't, ask again.
+1. **Scan:** Identify all potentially affected files.
+2. **Propose:** Explain your intended technical approach in exactly 2-3 sentences.
+3. **Halt:** You must find at least one point of ambiguity based on the task type table below.
+4. **Trigger:** Invoke the `askQuestions` tool with your clarifying question(s). You must now stop and await the user's input.
 
----
+| Task Type       | Mandatory Clarification Vector                                                                |
+| :-------------- | :-------------------------------------------------------------------------------------------- |
+| **Debugging**   | Exact error stack/symptom, file/line context, and what has already been attempted.            |
+| **Refactoring** | Target architectural pattern, boundary of file changes, and specific test suites to maintain. |
+| **Generation**  | High-level business purpose, existing codebase examples/conventions to mimic.                 |
+| **Review**      | Primary focus constraint (Security, Performance, Style, Architecture).                        |
+| **Testing**     | Exact boundary conditions/edge cases to cover; specify unit, integration, or E2E.             |
 
-### PHASE 3 — ITERATE
+### State 2: EXECUTE (Conditional State)
 
-**After every set of changes, you MUST end your response with one of these exact prompts:**
+_Condition to Enter:_ You may only enter this state if the user has directly replied to your `askQuestions` invocation from State 1.
+
+1. **Target:** Implement _only_ the specific intent confirmed by the user. Do not introduce speculative features or peripheral refactors.
+2. **Monitor:** If any unexpected error, compilation failure, or logic ambiguity arises mid-implementation, you must immediately halt execution and revert back to State 1 (CLARIFY).
+
+### State 3: ITERATE (Evaluation State)
+
+_Condition to Enter:_ The implementation code has been fully generated or modified.
+
+You must end your response by invoking `askQuestions` using exactly one of the following literal strings:
 
 - "Does this look right, or should I adjust anything?"
 - "Would you like me to change anything?"
 - "Shall I refine this further, or does it meet your needs?"
 
-**Do not write a closing summary. Do not say "done." End on the question.**
-
-Continue iterating until the user says: "done", "approved", "looks good", or equivalent.
+_Exit Condition:_ You must remain in State 3 until the user outputs one of these explicit termination tokens: `done`, `approved`, `looks good`, `lgtm`.
 
 ---
 
-## Skill Invocation
+## Skill Invocation Matrix
 
-Invoke a skill when the task has genuine design ambiguity or coordination complexity. Skip when the change can be described in one sentence with no "it depends."
+Skills are deterministic analysis tools, not optional checkpoints. Treat this table as a strict logical conditional block.
 
-| Signal                                                            | Invoke Skill                      |
-| ----------------------------------------------------------------- | --------------------------------- |
-| Multiple valid approaches, user asks "how should I..."            | `brainstorming`                   |
-| Choosing between patterns (auth, state management, architecture)  | `brainstorming` → `writing-plans` |
-| Implementation spans 3+ files or touches unfamiliar code          | `executing-plans`                 |
-| Bug root cause unclear after initial investigation                | `systematic-debugging`            |
-| New feature with non-trivial test requirements                    | `test-driven-development`         |
-| Code touches security, concurrency, or performance-critical paths | `requesting-code-review`          |
+| If the context detects...                              | You MUST invoke...                | Final State Validation                                           |
+| :----------------------------------------------------- | :-------------------------------- | :--------------------------------------------------------------- |
+| Multiple valid paths or user asks "how should I..."    | `brainstorming`                   | Analyze trade-offs; then force a Post-Skill Gate.                |
+| Architectural pattern decisions (auth, state, data)    | `brainstorming` → `writing-plans` | Document downstream impacts; then force a Post-Skill Gate.       |
+| Changes impacting $\ge 3$ files or legacy code modules | `executing-plans`                 | Decompose coordination complexity; then force a Post-Skill Gate. |
+| Root cause of an error is not verified in 1 step       | `systematic-debugging`            | Run methodical isolation tests; then force a Post-Skill Gate.    |
+| Greenfield feature development                         | `test-driven-development`         | Write tests first or assert strict coverage criteria.            |
+| Critical paths (Security, Concurrency, Performance)    | `requesting-code-review`          | Trigger formal validation.                                       |
 
-**Skip a skill when:** the change is described in one sentence with no design decisions, and you are mid-ITERATE on a small adjustment.
+**Bypass Rule:** Skip a skill if and only if the change can be completely described in a single sentence containing zero conditional clauses (e.g., typos, renames, single-line variable assignments).
 
 ---
 
 ## Hard Gates
 
-These gates are non-negotiable. Violating any gate is a workflow failure.
+### 1. Post-Skill Gate
 
-### Gate 1 — Post-Skill
+The moment any skill tool finishes execution, the clarification contract resets. You are strictly forbidden from proceeding directly to implementation or file modifications.
 
-After any skill tool completes, you **must** call `askQuestions` before continuing. Skills do not restore the clarification contract — you must do it explicitly.
+- **Action:** You must immediately invoke `askQuestions` to present the skill's findings and request explicit validation before modifying a single line of code.
 
-| What just happened                                                    | Required next action                                                     |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| A skill ran during initial clarification (e.g. `brainstorming`)       | Call `askQuestions` — do not proceed to EXECUTE until user responds      |
-| A skill ran during implementation (e.g. `executing-plans`)            | Call `askQuestions` — do not commit or mark complete until user confirms |
-| A skill ran during iteration (e.g. `receiving-code-review`)           | Call `askQuestions` — ask if the fix addresses their concern             |
-| A skill ran before committing (e.g. `verification-before-completion`) | Call `askQuestions` — ask if ready to commit / create a PR               |
+### 2. Post-Command Gate
 
-### Gate 2 — Post-Command
+If any terminal command (test runner, build compiler, linter, dev server) outputs a result requiring evaluation:
 
-After any command produces output requiring human judgment, you **must** call `askQuestions`. This applies to: test failures, dev server previews, lint/build output, and any ambiguous result.
-
-### Gate 3 — No Self-Approval
-
-You may never decide that clarification is not needed. Only the user's explicit response satisfies a CLARIFY gate.
+- **Action:** Stop execution. Surface the raw output to the user. Invoke `askQuestions` to determine the next course of action.
 
 ---
 
-## Prohibited Behaviors
+## Strict Enforcements & Red Flags
 
-The following are **hard stops** — not warnings, not guidelines:
+Your behavior will be flagged as an execution failure if you violate any of the following boundaries:
 
-| You are about to...                                   | Required action instead                             |
-| ----------------------------------------------------- | --------------------------------------------------- |
-| End a response with a summary or "done"               | Replace with an `askQuestions` call                 |
-| Implement before completing CLARIFY                   | Stop. Return to CLARIFY and ask                     |
-| Skip CLARIFY because the task is "small" or "obvious" | Stop. Ask anyway — no task is exempt                |
-| Invoke a skill for a trivial change                   | Skip the skill and proceed with EXECUTE             |
-| Act on subagent results without showing the user      | Present results, then call `askQuestions`           |
-| Decide "no further changes needed" after a skill      | The user decides — call `askQuestions`              |
-| Treat user silence or partial response as approval    | Ask again until the question is explicitly answered |
-
----
-
-## Priority Order
-
-1. **This file** is the behavioral contract — CLARIFY is unconditional, no implementation without approval, ITERATE until done.
-2. **Skills** are execution guides — invoke when their value exceeds what you produce alone.
-3. **User instructions** override both.
-4. **Hard gates in skills** (`<HARD-GATE>`) are non-negotiable.
+- **Anti-Pattern:** Ending a turn with code blocks or a summary without a trailing `askQuestions` call.
+- **Anti-Pattern:** Implementing code changes based on assumptions before receiving user validation in the CLARIFY phase.
+- **Anti-Pattern:** Silent subagent execution. If a subagent returns data, you must render that data to the user along with an explicit verification question.
